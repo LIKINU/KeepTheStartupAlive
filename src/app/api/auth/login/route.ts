@@ -6,7 +6,7 @@ import { writeAuditLog } from "@/lib/tenant";
 
 const loginSchema = z.object({
   email: z.string().email("请输入有效邮箱"),
-  password: z.string().min(1, "请输入密码"),
+  password: z.string().min(1, "请输入密码").max(200, "密码过长"),
 });
 
 export async function POST(request: Request) {
@@ -17,7 +17,12 @@ export async function POST(request: Request) {
     include: { tenant: true },
   });
 
-  if (!user || !verifyPassword(input.password, user.passwordHash) || user.status !== "active") {
+  if (
+    !user ||
+    !verifyPassword(input.password, user.passwordHash) ||
+    user.status !== "active" ||
+    user.tenant.status !== "active"
+  ) {
     return NextResponse.json({ error: "账号或密码不正确" }, { status: 401 });
   }
 

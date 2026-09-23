@@ -91,7 +91,12 @@ export async function getCurrentAuth(): Promise<AuthContext | null> {
     include: { user: { include: { tenant: true } } },
   });
 
-  if (!session || session.expiresAt <= new Date() || session.user.status !== "active") {
+  if (
+    !session ||
+    session.expiresAt <= new Date() ||
+    session.user.status !== "active" ||
+    session.user.tenant.status !== "active"
+  ) {
     if (session) await getDb().authSession.delete({ where: { id: session.id } }).catch(() => null);
     return null;
   }

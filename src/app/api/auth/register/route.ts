@@ -5,7 +5,11 @@ import { registerEnterpriseAccount } from "@/lib/auth";
 const registerSchema = z.object({
   name: z.string().min(1, "请输入姓名").max(80),
   email: z.string().email("请输入有效邮箱"),
-  password: z.string().min(8, "密码至少 8 位"),
+  password: z
+    .string()
+    .min(8, "密码至少 8 位")
+    .max(200, "密码过长")
+    .regex(/^(?=.*[A-Za-z])(?=.*\d).{8,200}$/, "密码需同时包含字母和数字"),
   tenantName: z.string().min(1, "请输入企业名称").max(120),
 });
 

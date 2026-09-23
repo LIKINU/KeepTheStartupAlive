@@ -1,4 +1,5 @@
-import { AppShell, EmptyState, PageHeader, Panel, MetricBar } from "@/components/app-shell";
+import { AppShell, EmptyState, PageHeader, Panel } from "@/components/app-shell";
+import { RoleTemplateGrid, type RoleCard } from "@/components/role-template-grid";
 import { ensureDatabase } from "@/lib/bootstrap-db";
 import { ensureRoleTemplates } from "@/lib/seed";
 import { getActiveWorkspace } from "@/lib/workspace";
@@ -7,15 +8,6 @@ import { parseCapabilities, parseStringList } from "@/lib/serializers";
 
 export const dynamic = "force-dynamic";
 
-const capabilityLabels = {
-  sales: "销售",
-  technology: "技术",
-  management: "管理",
-  operations: "运营",
-  financing: "融资",
-  strategy: "战略",
-};
-
 export default async function RolesPage() {
   await ensureDatabase();
   await ensureRoleTemplates();
@@ -23,16 +15,34 @@ export default async function RolesPage() {
   const roles = await getDb().roleTemplate.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] });
   const teamMembers = workspace ? await getDb().teamMember.findMany({ where: { workspaceId: workspace.id }, include: { distillationProfile: true } }) : [];
 
+  const roleCards: RoleCard[] = roles.map((role) => ({
+    id: role.id,
+    name: role.name,
+    category: role.category,
+    sandboxCount: parseStringList(role.sandboxTypes).length,
+    description: role.description,
+    capabilities: Object.entries(parseCapabilities(role.defaultCapabilities)).map(([key, value]) => ({
+      key,
+      value,
+    })),
+  }));
+
   return (
     <AppShell>
       <PageHeader title="全生命周期角色模板库" description="覆盖 OPC、初创团队、成长期和成熟公司，支持经营角色、专业支持、外部利益相关方和未来发展角色。" />
 
       {teamMembers.length > 0 && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-sm font-semibold text-white">数字孪生角色</h2>
+        <section className="mb-8">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+              <span className="size-1.5 rounded-full bg-cyan-300" />
+              数字孪生角色
+            </span>
+            <span className="text-xs text-[var(--muted)]">由资料蒸馏生成，参与经营会议推演</span>
+          </div>
           <div className="grid gap-4 grid-cols-2">
             {teamMembers.map((member) => (
-              <Panel key={member.id} className="p-4">
+              <Panel key={member.id} className="border-cyan-300/25 p-4">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
@@ -62,30 +72,14 @@ export default async function RolesPage() {
         </section>
       )}
 
-      <div className="grid gap-4 grid-cols-2">
-        {roles.map((role) => {
-          const capabilities = parseCapabilities(role.defaultCapabilities);
-          return (
-            <Panel key={role.id} className="p-4">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold">{role.name}</h2>
-                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{role.category}</p>
-                </div>
-                <span className="rounded-md border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]">
-                  {parseStringList(role.sandboxTypes).length} 类沙盘
-                </span>
-              </div>
-              <p className="mb-4 text-sm leading-6 text-[var(--muted)]">{role.description}</p>
-              <div className="grid gap-2">
-                {Object.entries(capabilities).map(([key, value]) => (
-                  <MetricBar key={key} label={capabilityLabels[key as keyof typeof capabilityLabels]} value={value} />
-                ))}
-              </div>
-            </Panel>
-          );
-        })}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300/25 bg-slate-300/10 px-3 py-1 text-xs font-semibold text-slate-200">
+          <span className="size-1.5 rounded-full bg-slate-400" />
+          默认角色模板
+        </span>
+        <span className="text-xs text-[var(--muted)]">系统内置，可直接套用到沙盘</span>
       </div>
+      <RoleTemplateGrid roles={roleCards} />
     </AppShell>
   );
 }

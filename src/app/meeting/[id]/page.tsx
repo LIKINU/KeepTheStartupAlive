@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { AppShell, MetricBar, PageHeader, Panel } from "@/components/app-shell";
+import { MeetingParticipantAdder } from "@/components/meeting-participant-adder";
 import { ensureDatabase } from "@/lib/bootstrap-db";
 import { getDb } from "@/lib/db";
 import { parseJson } from "@/lib/domain";
@@ -30,16 +31,34 @@ export default async function MeetingPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const meeting = await getDb().strategyMeeting.findUnique({
     where: { id },
-    include: { workspace: { include: { organizationProfile: true } }, businessEvent: true, decisionOptions: true },
+    include: {
+      workspace: {
+        include: {
+          organizationProfile: true,
+          teamMembers: { select: { id: true, name: true, roleName: true }, orderBy: { createdAt: "desc" } },
+        },
+      },
+      businessEvent: true,
+      decisionOptions: true,
+    },
   });
   if (!meeting) notFound();
   const views = parseJson<ParticipantView[]>(meeting.participantViews, []);
+  const existingRoleNames = views.map((v) => v.roleName);
   return (
     <AppShell>
       <PageHeader
         title={`Cycle ${meeting.cycle} 经营会议`}
         description={`${meeting.workspace.organizationProfile.name} · 主持：${meeting.chair}`}
       />
+      <Panel className="mb-5 p-5">
+        <h2 className="mb-3 text-lg font-semibold">手动添加角色到会议</h2>
+        <MeetingParticipantAdder
+          meetingId={meeting.id}
+          existingRoleNames={existingRoleNames}
+          teamMembers={meeting.workspace.teamMembers.map((m) => ({ id: m.id, name: m.name, roleName: m.roleName }))}
+        />
+      </Panel>
       <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
         <div className="space-y-5">
           <Panel className="p-5">
